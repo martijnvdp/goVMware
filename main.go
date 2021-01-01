@@ -1,6 +1,10 @@
 package main
 
+import (
+	"github.com/martijnxd/goVMware/functions"
+)
+
 func main() {
-	vsphere.listVMS
+	functions.ListVMS()
 
 }
