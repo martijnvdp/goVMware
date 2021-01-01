@@ -1,5 +1,5 @@
 param($credential)
-if !($user) { $credential = get-creential }
+if (!$credential) { $credential = get-creential }
 $env:GOVMOMI_URL = "https://vc.mvdp.eu/sdk"
 $env:GOVMOMI_USERNAME = $($Credential.username)
 $env:GOVMOMI_PASSWORD = $($Credential.GetNetworkCredential().Password)
