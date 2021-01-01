@@ -1,4 +1,4 @@
-package vpshere
+package functions
 
 import (
 	"flag"
