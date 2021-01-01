@@ -16,6 +16,7 @@ import (
 	"golang.org/x/net/context"
 )
 
+//ByName vm type
 type ByName []mo.VirtualMachine
 
 func (n ByName) Len() int           { return len(n) }
