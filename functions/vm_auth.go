@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// GetEnvString returns string from environment variable.
 func GetEnvString(v string, def string) string {
 	r := os.Getenv(v)
 	if r == "" {
