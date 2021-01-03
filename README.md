@@ -23,3 +23,4 @@ powershell -file .\set-credz.ps1
 ```
 ## references
 https://github.com/vmware/govmomi
+https://github.com/vmware/govmomi/blob/master/govc/USAGE.md
