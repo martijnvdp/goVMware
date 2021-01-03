@@ -6,5 +6,6 @@ import (
 
 func main() {
 	functions.ListVMS()
+	functions.ListDS()
 
 }

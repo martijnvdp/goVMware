@@ -1,15 +1,20 @@
 package functions
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/vmware/govmomi/session/cache"
+	"github.com/vmware/govmomi/vim25"
+	"github.com/vmware/govmomi/vim25/soap"
 )
 
-// GetEnvString returns string from environment variable.
-func GetEnvString(v string, def string) string {
+// getEnvString returns string from environment variable.
+func getEnvString(v string, def string) string {
 	r := os.Getenv(v)
 	if r == "" {
 		return def
@@ -18,8 +23,8 @@ func GetEnvString(v string, def string) string {
 	return r
 }
 
-// GetEnvBool returns boolean from environment variable.
-func GetEnvBool(v string, def bool) bool {
+// getEnvBool returns boolean from environment variable.
+func getEnvBool(v string, def bool) bool {
 	r := os.Getenv(v)
 	if r == "" {
 		return def
@@ -41,10 +46,10 @@ const (
 )
 
 var urlDescription = fmt.Sprintf("ESX or vCenter URL [%s]", envURL)
-var urlFlag = flag.String("url", GetEnvString(envURL, "https://username:password@host/sdk"), urlDescription)
+var urlFlag = flag.String("url", getEnvString(envURL, ""), urlDescription)
 
 var insecureDescription = fmt.Sprintf("Don't verify the server's certificate chain [%s]", envInsecure)
-var insecureFlag = flag.Bool("insecure", GetEnvBool(envInsecure, false), insecureDescription)
+var insecureFlag = flag.Bool("insecure", getEnvBool(envInsecure, false), insecureDescription)
 
 func processOverride(u *url.URL) {
 	envUsername := os.Getenv(envUserName)
@@ -78,7 +83,28 @@ func processOverride(u *url.URL) {
 	}
 }
 
-func exit(err error) {
-	fmt.Fprintf(os.Stderr, "Error: %s\n", err)
-	os.Exit(1)
+// NewClient creates a vim25.Client for use in the examples
+func NewClient(ctx context.Context) (*vim25.Client, error) {
+	// Parse URL from string
+	u, err := soap.ParseURL(*urlFlag)
+	if err != nil {
+		return nil, err
+	}
+
+	// Override username and/or password as required
+	processOverride(u)
+
+	// Share govc's session cache
+	s := &cache.Session{
+		URL:      u,
+		Insecure: *insecureFlag,
+	}
+
+	c := new(vim25.Client)
+	err = s.Login(ctx, c, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
 }

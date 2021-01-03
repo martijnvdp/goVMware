@@ -1,88 +1,40 @@
 package functions
 
 import (
-	"flag"
+	"context"
 	"fmt"
-	"net/url"
-	"os"
-	"sort"
-	"text/tabwriter"
 
-	"github.com/vmware/govmomi"
-	"github.com/vmware/govmomi/find"
-	"github.com/vmware/govmomi/property"
+	"github.com/vmware/govmomi/view"
+	"github.com/vmware/govmomi/vim25"
 	"github.com/vmware/govmomi/vim25/mo"
-	"github.com/vmware/govmomi/vim25/types"
-	"golang.org/x/net/context"
 )
 
-//ByName vm type
-type ByName []mo.VirtualMachine
-
-func (n ByName) Len() int           { return len(n) }
-func (n ByName) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
-func (n ByName) Less(i, j int) bool { return n[i].Name < n[j].Name }
-
-//ListVMS returns a list of vms
 func ListVMS() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	Run(func(ctx context.Context, c *vim25.Client) error {
+		// Create view of VirtualMachine objects
+		m := view.NewManager(c)
 
-	flag.Parse()
+		v, err := m.CreateContainerView(ctx, c.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
+		if err != nil {
+			return err
+		}
 
-	// Parse URL from string
-	u, err := url.Parse(*urlFlag)
-	if err != nil {
-		exit(err)
-	}
+		defer v.Destroy(ctx)
 
-	// Override username and/or password as required
-	processOverride(u)
+		// Retrieve summary property for all machines
+		// Reference: http://pubs.vmware.com/vsphere-60/topic/com.vmware.wssdk.apiref.doc/vim.VirtualMachine.html
+		var vms []mo.VirtualMachine
+		err = v.Retrieve(ctx, []string{"VirtualMachine"}, []string{"summary"}, &vms)
+		if err != nil {
+			return err
+		}
 
-	// Connect and log in to ESX or vCenter
-	c, err := govmomi.NewClient(ctx, u, *insecureFlag)
-	if err != nil {
-		exit(err)
-	}
+		// Print summary per vm (see also: govc/vm/info.go)
 
-	f := find.NewFinder(c.Client, true)
+		for _, vm := range vms {
+			fmt.Printf("%s: %s\n", vm.Summary.Config.Name, vm.Summary.Config.GuestFullName)
+		}
 
-	// Find one and only datacenter
-	dc, err := f.DefaultDatacenter(ctx)
-	if err != nil {
-		exit(err)
-	}
-
-	// Make future calls local to this datacenter
-	f.SetDatacenter(dc)
-
-	// Find virtual machines in datacenter
-	vms, err := f.VirtualMachineList(ctx, "*")
-	if err != nil {
-		exit(err)
-	}
-
-	pc := property.DefaultCollector(c.Client)
-
-	// Convert datastores into list of references
-	var refs []types.ManagedObjectReference
-	for _, vm := range vms {
-		refs = append(refs, vm.Reference())
-	}
-
-	// Retrieve name property for all vms
-	var vmt []mo.VirtualMachine
-	err = pc.Retrieve(ctx, refs, []string{"name"}, &vmt)
-	if err != nil {
-		exit(err)
-	}
-
-	// Print name per virtual machine
-	tw := tabwriter.NewWriter(os.Stdout, 2, 0, 2, ' ', 0)
-	fmt.Println("Virtual machines found:", len(vmt))
-	sort.Sort(ByName(vmt))
-	for _, vm := range vmt {
-		fmt.Fprintf(tw, "%s\n", vm.Name)
-	}
-	tw.Flush()
+		return nil
+	})
 }
