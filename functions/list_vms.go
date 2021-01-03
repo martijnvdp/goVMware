@@ -10,8 +10,10 @@ import (
 )
 
 func ListVMS() {
+
 	Run(func(ctx context.Context, c *vim25.Client) error {
 		// Create view of VirtualMachine objects
+
 		m := view.NewManager(c)
 
 		v, err := m.CreateContainerView(ctx, c.ServiceContent.RootFolder, []string{"VirtualMachine"}, true)
@@ -32,7 +34,7 @@ func ListVMS() {
 		// Print summary per vm (see also: govc/vm/info.go)
 
 		for _, vm := range vms {
-			fmt.Printf("%s: %s\n", vm.Summary.Config.Name, vm.Summary.Config.GuestFullName)
+			fmt.Printf("%s: %s: %s\n", vm.Summary.Config.Name, vm.Summary.Config.GuestFullName, vm.Summary.Guest.HostName)
 		}
 
 		return nil
